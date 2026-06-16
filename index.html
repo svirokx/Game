@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3 -->
+<!-- v4 -->
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -8,22 +8,24 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;overflow:hidden;font-family:Georgia,serif;cursor:none;-webkit-user-select:none;user-select:none}
-canvas{display:block}
+canvas#game{display:block;position:fixed;inset:0;z-index:1}
 
-/* ─── CRT / VHS overlay ─── */
-#crt{position:fixed;inset:0;pointer-events:none;z-index:200;mix-blend-mode:normal}
+/* CRT overlay */
+#crt{position:fixed;inset:0;pointer-events:none;z-index:200}
 #crt::before{content:'';position:absolute;inset:0;
-  background:repeating-linear-gradient(0deg,rgba(0,0,0,.15) 0px,transparent 1px,transparent 2px);
-  animation:scanlines .08s steps(1) infinite;pointer-events:none}
-#crt::after{content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%);
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0px,transparent 1px,transparent 2px);
   pointer-events:none}
-@keyframes scanlines{0%{transform:translateY(0)}100%{transform:translateY(2px)}}
+#crt::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.6) 100%);
+  pointer-events:none}
 
-/* ─── Noise grain ─── */
-#grain{position:fixed;inset:0;pointer-events:none;z-index:199;opacity:.07;mix-blend-mode:overlay}
+/* Grain */
+#grain{position:fixed;inset:0;pointer-events:none;z-index:199;opacity:.06;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:128px 128px;animation:grainShift .1s steps(3) infinite}
+@keyframes grainShift{0%{transform:translate(0,0)}33%{transform:translate(-2px,1px)}66%{transform:translate(1px,-1px)}100%{transform:translate(0,0)}}
 
-/* ─── Loading ─── */
+/* Loading */
 #loading{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity 1.5s}
 #loading.fade{opacity:0;pointer-events:none}
 #loading h1{color:#c4a35a;font-size:2.4em;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;text-shadow:0 0 30px rgba(196,163,90,.3)}
@@ -31,15 +33,16 @@ canvas{display:block}
 #loading .bar{width:280px;height:2px;background:#1a1a1a;border-radius:2px}
 #loading .fill{height:100%;background:#c4a35a;width:0%;border-radius:2px;transition:width .3s}
 #loading .status{color:#444;font-size:.7em;margin-top:12px;letter-spacing:.1em}
+#loading .err{color:#a33;font-size:.8em;margin-top:20px;max-width:400px;text-align:center;display:none}
 
-/* ─── Start ─── */
+/* Start */
 #start{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:900;cursor:pointer}
 #start h2{color:#c4a35a;font-size:1.6em;margin-bottom:12px;animation:pulse 2s ease-in-out infinite}
 #start p{color:#556;font-size:.85em}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
 
-/* ─── HUD ─── */
-#hud{position:fixed;inset:0;pointer-events:none;z-index:100}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:100;display:none}
 #cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border:1px solid rgba(200,200,200,.35);border-radius:50%}
 #sbar{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);width:180px;height:2px;background:rgba(20,20,30,.6);border-radius:2px;opacity:0;transition:opacity .5s}
 #sbar.on{opacity:1}
@@ -53,10 +56,10 @@ canvas{display:block}
 #chap{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#c4a35a;font-size:2em;letter-spacing:.2em;text-transform:uppercase;opacity:0;z-index:250;pointer-events:none;text-shadow:0 0 40px rgba(196,163,90,.3);transition:opacity 2s}
 #finfo{position:absolute;bottom:28px;right:28px;color:rgba(150,140,120,.35);font-size:.65em;letter-spacing:.1em}
 
-/* ─── Blink ─── */
-#blink{position:fixed;inset:0;background:#000;pointer-events:none;z-index:180;opacity:0}
+/* Blink */
+#blink{position:fixed;inset:0;background:#000;pointer-events:none;z-index:180;opacity:0;transition:opacity .08s}
 
-/* ─── Pause ─── */
+/* Pause */
 #pause{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:500}
 #pause button{background:none;border:1px solid #444;color:#998;font-family:Georgia,serif;font-size:1.05em;padding:10px 36px;margin:7px;cursor:pointer;letter-spacing:.1em;transition:all .3s}
 #pause button:hover{border-color:#c4a35a;color:#c4a35a}
@@ -64,13 +67,14 @@ canvas{display:block}
 </head>
 <body>
 <div id="crt"></div>
-<canvas id="grain"></canvas>
+<div id="grain"></div>
 
 <div id="loading">
   <h1>Эхо Затухающих Маяков</h1>
   <div class="sub">Глава I — Прибытие</div>
   <div class="bar"><div class="fill" id="lbar"></div></div>
   <div class="status" id="lstatus">загрузка...</div>
+  <div class="err" id="lerr"></div>
 </div>
 
 <div id="start">
@@ -94,819 +98,980 @@ canvas{display:block}
   <button id="btnE">Выход</button>
 </div>
 
-<!-- Three.js via classic script tag (not module) -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js"></script>
+<script>
+// ═══════ ERROR HANDLER — show errors on screen ═══════
+window.onerror = function(msg, src, line, col, err) {
+  var el = document.getElementById('lerr');
+  if (el) { el.style.display = 'block'; el.textContent = 'Error: ' + msg + ' (line ' + line + ')'; }
+  console.error('GAME ERROR:', msg, src, line, col, err);
+};
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js"
+  onerror="document.getElementById('lerr').style.display='block';document.getElementById('lerr').textContent='Не удалось загрузить Three.js — проверь интернет';">
+</script>
+
 <script>
 "use strict";
 
-// ════════════════════════════════════════════
-//  GRAIN CANVAS — animated noise
-// ════════════════════════════════════════════
-(function initGrain(){
-  var c=document.getElementById('grain'),x=c.getContext('2d');
-  c.width=256;c.height=256;
-  function draw(){
-    var d=x.createImageData(256,256),p=d.data;
-    for(var i=0;i<p.length;i+=4){var v=Math.random()*255|0;p[i]=p[i+1]=p[i+2]=v;p[i+3]=255;}
-    x.putImageData(d,0,0);requestAnimationFrame(draw);
-  }
-  draw();
-})();
+// ═══════════════════════════════════════════
+//  CHECK THREE.JS LOADED
+// ═══════════════════════════════════════════
+if (typeof THREE === 'undefined') {
+  document.getElementById('lerr').style.display = 'block';
+  document.getElementById('lerr').textContent = 'Three.js не загрузился. Обнови страницу.';
+  throw new Error('THREE not loaded');
+}
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  STATE
-// ════════════════════════════════════════════
-var S={
-  loaded:false,started:false,paused:false,locked:false,
-  sanity:100,flashOn:false,battery:100,
-  lighthouseOn:false,doorEvent:false,firstScare:false,
-  gameTime:16,timeSpeed:.15,night:false,
-  speed:3.2,sprint:5,sprinting:false,bobPh:0,breath:0,
-  keys:{},yaw:0,pitch:0,
-  nearItem:null,scareT:0,whisperT:0
+// ═══════════════════════════════════════════
+var S = {
+  loaded: false, started: false, paused: false, locked: false,
+  sanity: 100, flashOn: false, battery: 100,
+  lighthouseOn: false, doorEvent: false, firstScare: false,
+  gameTime: 16, timeSpeed: 0.15, night: false,
+  speed: 3.2, sprint: 5, sprinting: false, bobPh: 0, breath: 0,
+  keys: {}, yaw: 0, pitch: 0,
+  nearItem: null, scareT: 0, whisperT: 0
 };
 
-// ════════════════════════════════════════════
-//  AUDIO — procedural
-// ════════════════════════════════════════════
-var AU={ctx:null,g:{}};
-function audioInit(){
-  AU.ctx=new(window.AudioContext||window.webkitAudioContext)();
-  AU.master=AU.ctx.createGain();AU.master.gain.value=.65;AU.master.connect(AU.ctx.destination);
-  ['amb','sfx','hor'].forEach(function(c){AU.g[c]=AU.ctx.createGain();AU.g[c].connect(AU.master);});
-  AU.g.amb.gain.value=.4;AU.g.sfx.gain.value=.55;AU.g.hor.gain.value=.45;
-}
-function genBuf(dur,ch,fn){
-  var sr=AU.ctx.sampleRate,len=sr*dur|0,buf=AU.ctx.createBuffer(ch,len,sr);
-  for(var c=0;c<ch;c++){var d=buf.getChannelData(c);fn(d,len,sr,c);}return buf;
-}
-function genWind(){return genBuf(4,2,function(d,n,sr,ch){var v=0;for(var i=0;i<n;i++){v+=(Math.random()*2-1-v)*.003;var g=Math.sin(i/sr*.7+ch)*.5+.5;d[i]=v*g*3*Math.sin(Math.PI*i/n);}});}
-function genRain(){return genBuf(3,2,function(d,n,sr){for(var i=0;i<n;i++){d[i]=(Math.random()<.15?(Math.random()-.5)*.5:0)+(Math.random()*2-1)*.07;}});}
-function genWaves(){return genBuf(5,2,function(d,n,sr,ch){var v=0;for(var i=0;i<n;i++){v+=(Math.random()*2-1-v)*.002;var w=Math.sin(i/sr*.4+ch*.5)*.5+.5;d[i]=v*w*2*.35;}});}
-function genCreak(){return genBuf(1.5,1,function(d,n,sr){for(var i=0;i<n;i++){var t=i/sr,f=80+Math.sin(t*3)*40,e=Math.exp(-t*2)*Math.sin(Math.PI*t/1.5);d[i]=(Math.sin(t*f*6.28)+((Math.random()-.5)*.3))*e*.25;}});}
-function genThunder(){return genBuf(3,2,function(d,n,sr){var v=0;for(var i=0;i<n;i++){var t=i/sr;v+=(Math.random()*2-1-v)*.01;var c=t<.1?Math.sin(t*800)*(1-t*10):0;d[i]=(c*.7+v*Math.exp(-t*1.5)*4)*.45;}});}
-function genScratch(){return genBuf(2,1,function(d,n,sr){for(var i=0;i<n;i++){var t=i/sr,b=Math.random()<.03?1:0;d[i]=(Math.sin(t*(200+Math.sin(t*5)*100))*.08+(Math.random()-.5)*b*.35)*Math.sin(Math.PI*t/2*3)*.4;}});}
-function genHeart(){return genBuf(1,1,function(d,n,sr){for(var i=0;i<n;i++){var t=i/sr;var b1=Math.exp(-Math.pow((t-.1)*20,2))*Math.sin(t*60*6.28);var b2=Math.exp(-Math.pow((t-.3)*20,2))*Math.sin(t*50*6.28);d[i]=(b1+b2*.7)*.35;}});}
-function genWhisper(){return genBuf(2,2,function(d,n,sr,ch){for(var i=0;i<n;i++){var t=i/sr,e=Math.sin(Math.PI*t/2);d[i]=((Math.random()-.5)*.12+Math.sin(t*(300+ch*50)*6.28)*.04)*e;}});}
-
-function auPlay(buf,cat,loop,vol){
-  var s=AU.ctx.createBufferSource();s.buffer=buf;s.loop=!!loop;
-  var g=AU.ctx.createGain();g.gain.value=vol||1;
-  s.connect(g);g.connect(AU.g[cat||'sfx']);s.start();return{s:s,g:g};
-}
-
-// ════════════════════════════════════════════
-//  THREE.JS SETUP
-// ════════════════════════════════════════════
-var renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'default'});
-renderer.setSize(window.innerWidth,window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=.7;
-renderer.outputColorSpace=THREE.SRGBColorSpace;
-document.body.appendChild(renderer.domElement);
-
-var scene=new THREE.Scene();
-scene.background=new THREE.Color(0x080810);
-scene.fog=new THREE.FogExp2(0x080810,.08); // Dense fog — 5-7m visibility
-
-var camera=new THREE.PerspectiveCamera(68,window.innerWidth/window.innerHeight,.1,80);
-camera.position.set(0,1.7,8);
-
-var clock=new THREE.Clock();
-var interactables=[];
-
-// ════════════════════════════════════════════
-//  MATERIALS — low-poly look, pixel noise
-// ════════════════════════════════════════════
-function noiseTex(w,h,base,range){
-  var c=document.createElement('canvas');c.width=w;c.height=h;
-  var x=c.getContext('2d');var d=x.createImageData(w,h);var p=d.data;
-  var br=(base>>16)&255,bg=(base>>8)&255,bb=base&255;
-  for(var i=0;i<p.length;i+=4){
-    var n=(Math.random()-.5)*range|0;
-    p[i]=Math.max(0,Math.min(255,br+n));
-    p[i+1]=Math.max(0,Math.min(255,bg+n));
-    p[i+2]=Math.max(0,Math.min(255,bb+n));
-    p[i+3]=255;
+// ═══════════════════════════════════════════
+//  AUDIO (procedural — no files needed)
+// ═══════════════════════════════════════════
+var AU = { ctx: null, g: {} };
+function audioInit() {
+  AU.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  AU.master = AU.ctx.createGain(); AU.master.gain.value = 0.65; AU.master.connect(AU.ctx.destination);
+  var cats = ['amb', 'sfx', 'hor'];
+  for (var i = 0; i < cats.length; i++) {
+    AU.g[cats[i]] = AU.ctx.createGain(); AU.g[cats[i]].connect(AU.master);
   }
-  x.putImageData(d,0,0);
-  var t=new THREE.CanvasTexture(c);
-  t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  AU.g.amb.gain.value = 0.4; AU.g.sfx.gain.value = 0.55; AU.g.hor.gain.value = 0.45;
+}
+
+function genBuf(dur, ch, fn) {
+  var sr = AU.ctx.sampleRate, len = (sr * dur) | 0;
+  var buf = AU.ctx.createBuffer(ch, len, sr);
+  for (var c = 0; c < ch; c++) fn(buf.getChannelData(c), len, sr, c);
+  return buf;
+}
+
+function genWind() {
+  return genBuf(4, 2, function(d, n, sr, ch) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+      v += (Math.random() * 2 - 1 - v) * 0.003;
+      d[i] = v * (Math.sin(i / sr * 0.7 + ch) * 0.5 + 0.5) * 3 * Math.sin(Math.PI * i / n);
+    }
+  });
+}
+
+function genRain() {
+  return genBuf(3, 2, function(d, n) {
+    for (var i = 0; i < n; i++) {
+      var spike = Math.random() < 0.15 ? (Math.random() - 0.5) * 0.5 : 0;
+      d[i] = spike + (Math.random() * 2 - 1) * 0.07;
+    }
+  });
+}
+
+function genWaves() {
+  return genBuf(5, 2, function(d, n, sr, ch) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+      v += (Math.random() * 2 - 1 - v) * 0.002;
+      d[i] = v * (Math.sin(i / sr * 0.4 + ch * 0.5) * 0.5 + 0.5) * 2 * 0.35;
+    }
+  });
+}
+
+function genCreak() {
+  return genBuf(1.5, 1, function(d, n, sr) {
+    for (var i = 0; i < n; i++) {
+      var t = i / sr, f = 80 + Math.sin(t * 3) * 40;
+      var e = Math.exp(-t * 2) * Math.sin(Math.PI * t / 1.5);
+      d[i] = (Math.sin(t * f * 6.28) + (Math.random() - 0.5) * 0.3) * e * 0.25;
+    }
+  });
+}
+
+function genThunder() {
+  return genBuf(3, 2, function(d, n, sr) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+      var t = i / sr;
+      v += (Math.random() * 2 - 1 - v) * 0.01;
+      var c = t < 0.1 ? Math.sin(t * 800) * (1 - t * 10) : 0;
+      d[i] = (c * 0.7 + v * Math.exp(-t * 1.5) * 4) * 0.45;
+    }
+  });
+}
+
+function genScratch() {
+  return genBuf(2, 1, function(d, n, sr) {
+    for (var i = 0; i < n; i++) {
+      var t = i / sr, b = Math.random() < 0.03 ? 1 : 0;
+      var env = Math.sin(Math.PI * t / 2 * 3) * 0.4;
+      d[i] = (Math.sin(t * (200 + Math.sin(t * 5) * 100)) * 0.08 + (Math.random() - 0.5) * b * 0.35) * env;
+    }
+  });
+}
+
+function genHeart() {
+  return genBuf(1, 1, function(d, n, sr) {
+    for (var i = 0; i < n; i++) {
+      var t = i / sr;
+      var b1 = Math.exp(-Math.pow((t - 0.1) * 20, 2)) * Math.sin(t * 60 * 6.28);
+      var b2 = Math.exp(-Math.pow((t - 0.3) * 20, 2)) * Math.sin(t * 50 * 6.28);
+      d[i] = (b1 + b2 * 0.7) * 0.35;
+    }
+  });
+}
+
+function genWhisper() {
+  return genBuf(2, 2, function(d, n, sr, ch) {
+    for (var i = 0; i < n; i++) {
+      var t = i / sr, e = Math.sin(Math.PI * t / 2);
+      d[i] = ((Math.random() - 0.5) * 0.12 + Math.sin(t * (300 + ch * 50) * 6.28) * 0.04) * e;
+    }
+  });
+}
+
+function auPlay(buf, cat, loop, vol) {
+  var s = AU.ctx.createBufferSource(); s.buffer = buf; s.loop = !!loop;
+  var g = AU.ctx.createGain(); g.gain.value = vol || 1;
+  s.connect(g); g.connect(AU.g[cat || 'sfx']); s.start();
+  return { s: s, g: g };
+}
+
+// ═══════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════
+var subTO;
+function showSub(t, dur) {
+  var el = document.getElementById('sub');
+  el.textContent = t; el.classList.add('on');
+  clearTimeout(subTO);
+  subTO = setTimeout(function() { el.classList.remove('on'); }, dur || 3000);
+}
+
+function showChap(t, dur) {
+  var el = document.getElementById('chap');
+  el.textContent = t; el.style.opacity = 1;
+  setTimeout(function() { el.style.opacity = 0; }, dur || 4000);
+}
+
+// ═══════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════
+var FLOORS = 4, BASE_R = 3.5, TOP_R = 2.5, FL_H = 3.5;
+
+// ═══════════════════════════════════════════
+//  DEFERRED INIT — runs AFTER loading bar starts
+// ═══════════════════════════════════════════
+var renderer, scene, camera, clock;
+var flashlight, lhBeam, ambLight, sunLight, moonLight;
+var interactables = [], intLights = [];
+var creature, creatureVisible = false, creatureAlpha = 0;
+var rain, rainMat;
+
+function initGame() {
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game'), antialias: false, powerPreference: 'default' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.7;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x080810);
+  scene.fog = new THREE.FogExp2(0x080810, 0.08);
+
+  camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 80);
+  camera.position.set(0, 1.7, 8);
+
+  clock = new THREE.Clock();
+
+  return 'renderer';
+}
+
+// ═══════════════════════════════════════════
+//  TEXTURE GENERATOR — pixel art noise
+// ═══════════════════════════════════════════
+function noiseTex(w, h, base, range) {
+  var c = document.createElement('canvas'); c.width = w; c.height = h;
+  var x = c.getContext('2d');
+  var d = x.createImageData(w, h); var p = d.data;
+  var br = (base >> 16) & 255, bg = (base >> 8) & 255, bb = base & 255;
+  for (var i = 0; i < p.length; i += 4) {
+    var n = ((Math.random() - 0.5) * range) | 0;
+    p[i] = Math.max(0, Math.min(255, br + n));
+    p[i + 1] = Math.max(0, Math.min(255, bg + n));
+    p[i + 2] = Math.max(0, Math.min(255, bb + n));
+    p[i + 3] = 255;
+  }
+  x.putImageData(d, 0, 0);
+  var t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }
 
-var texStone=noiseTex(32,32,0x4a4a55,25);texStone.repeat.set(4,4);
-var texWood=noiseTex(16,16,0x5a4030,20);texWood.repeat.set(3,3);
-var texWoodDk=noiseTex(16,16,0x3a2820,18);texWoodDk.repeat.set(3,3);
-var texMetal=noiseTex(8,8,0x556065,15);
-var texWall=noiseTex(32,32,0x555566,22);texWall.repeat.set(6,8);
-var texGround=noiseTex(64,64,0x3a3a30,20);texGround.repeat.set(8,8);
+// Materials (created during init)
+var mStone, mWall, mWood, mWoodDk, mMetal, mGlass, mRust, mGround, mEmit;
 
-var mStone=new THREE.MeshLambertMaterial({map:texStone});
-var mWall=new THREE.MeshLambertMaterial({map:texWall});
-var mWood=new THREE.MeshLambertMaterial({map:texWood});
-var mWoodDk=new THREE.MeshLambertMaterial({map:texWoodDk});
-var mMetal=new THREE.MeshLambertMaterial({map:texMetal,color:0x889090});
-var mGlass=new THREE.MeshLambertMaterial({color:0x88aacc,transparent:true,opacity:.25});
-var mRust=new THREE.MeshLambertMaterial({color:0x7b4010,map:noiseTex(8,8,0x7b4010,30)});
-var mGround=new THREE.MeshLambertMaterial({map:texGround});
-var mEmit=new THREE.MeshBasicMaterial({color:0xffdd88});
+function initMaterials() {
+  var texStone = noiseTex(32, 32, 0x4a4a55, 25); texStone.repeat.set(4, 4);
+  var texWood = noiseTex(16, 16, 0x5a4030, 20); texWood.repeat.set(3, 3);
+  var texWoodDk = noiseTex(16, 16, 0x3a2820, 18); texWoodDk.repeat.set(3, 3);
+  var texMetal = noiseTex(8, 8, 0x556065, 15);
+  var texWall = noiseTex(32, 32, 0x555566, 22); texWall.repeat.set(6, 8);
+  var texGround = noiseTex(64, 64, 0x3a3a30, 20); texGround.repeat.set(8, 8);
 
-// ════════════════════════════════════════════
-//  BUILD: ISLAND
-// ════════════════════════════════════════════
-function buildIsland(){
-  var g=new THREE.Group();
-  // Rocky base
-  var geo=new THREE.CylinderGeometry(18,22,4,16,3);
-  var pos=geo.attributes.position;
-  for(var i=0;i<pos.count;i++){
-    var x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
-    var d=Math.sqrt(x*x+z*z);
-    var n=Math.sin(x*.5)*Math.cos(z*.7)*1.2+Math.sin(x*1.3+z*.9)*.4;
-    pos.setY(i,y+(y>0?n*.4:n-d*.04));
-    if(d>12){pos.setX(i,x+(Math.random()-.5)*1.5);pos.setZ(i,z+(Math.random()-.5)*1.5);}
+  mStone = new THREE.MeshLambertMaterial({ map: texStone });
+  mWall = new THREE.MeshLambertMaterial({ map: texWall });
+  mWood = new THREE.MeshLambertMaterial({ map: texWood });
+  mWoodDk = new THREE.MeshLambertMaterial({ map: texWoodDk });
+  mMetal = new THREE.MeshLambertMaterial({ map: texMetal, color: 0x889090 });
+  mGlass = new THREE.MeshLambertMaterial({ color: 0x88aacc, transparent: true, opacity: 0.25 });
+  mRust = new THREE.MeshLambertMaterial({ color: 0x7b4010, map: noiseTex(8, 8, 0x7b4010, 30) });
+  mGround = new THREE.MeshLambertMaterial({ map: texGround });
+  mEmit = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+  return 'materials';
+}
+
+// ═══════════════════════════════════════════
+//  BUILD FUNCTIONS
+// ═══════════════════════════════════════════
+function buildIsland() {
+  var g = new THREE.Group();
+  var geo = new THREE.CylinderGeometry(18, 22, 4, 16, 3);
+  var pos = geo.attributes.position;
+  for (var i = 0; i < pos.count; i++) {
+    var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    var d = Math.sqrt(x * x + z * z);
+    var n = Math.sin(x * 0.5) * Math.cos(z * 0.7) * 1.2 + Math.sin(x * 1.3 + z * 0.9) * 0.4;
+    if (y > 0) pos.setY(i, y + n * 0.4);
+    else pos.setY(i, y + n - d * 0.04);
+    if (d > 12) { pos.setX(i, x + (Math.random() - 0.5) * 1.5); pos.setZ(i, z + (Math.random() - 0.5) * 1.5); }
   }
   geo.computeVertexNormals();
-  var m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({map:noiseTex(32,32,0x333328,20)}));
-  m.position.y=-2;m.receiveShadow=true;g.add(m);
+  var m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: noiseTex(32, 32, 0x333328, 20) }));
+  m.position.y = -2; m.receiveShadow = true; g.add(m);
 
-  // Walkable ground
-  var gnd=new THREE.Mesh(new THREE.CircleGeometry(15,16),mGround);
-  gnd.rotation.x=-Math.PI/2;gnd.position.y=.01;gnd.receiveShadow=true;g.add(gnd);
+  var gnd = new THREE.Mesh(new THREE.CircleGeometry(15, 16), mGround);
+  gnd.rotation.x = -Math.PI / 2; gnd.position.y = 0.01; gnd.receiveShadow = true; g.add(gnd);
 
-  // Rocks
-  for(var i=0;i<20;i++){
-    var a=Math.random()*Math.PI*2,dd=5+Math.random()*9;
-    var rk=new THREE.Mesh(new THREE.DodecahedronGeometry(.3+Math.random()*.7,0),
-      new THREE.MeshLambertMaterial({color:new THREE.Color(.25+Math.random()*.05,.25+Math.random()*.05,.22+Math.random()*.05)}));
-    rk.position.set(Math.cos(a)*dd,Math.random()*.15,Math.sin(a)*dd);
-    rk.rotation.set(Math.random(),Math.random(),Math.random());
-    rk.scale.y*=.4+Math.random()*.5;rk.castShadow=true;g.add(rk);
+  for (var i = 0; i < 20; i++) {
+    var a = Math.random() * Math.PI * 2, dd = 5 + Math.random() * 9;
+    var rk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.7, 0),
+      new THREE.MeshLambertMaterial({ color: new THREE.Color(0.25 + Math.random() * 0.05, 0.25 + Math.random() * 0.05, 0.22 + Math.random() * 0.05) }));
+    rk.position.set(Math.cos(a) * dd, Math.random() * 0.15, Math.sin(a) * dd);
+    rk.rotation.set(Math.random(), Math.random(), Math.random());
+    rk.scale.y *= 0.4 + Math.random() * 0.5; rk.castShadow = true; g.add(rk);
   }
-  return g;
+  scene.add(g);
+  return 'island';
 }
 
-// ════════════════════════════════════════════
-//  BUILD: LIGHTHOUSE (low-poly angular)
-// ════════════════════════════════════════════
-var FLOORS=4,BASE_R=3.5,TOP_R=2.5,FL_H=3.5;
-function buildLighthouse(){
-  var g=new THREE.Group();
-  // Outer wall — 8-sided for angular low-poly look
-  var wallG=new THREE.CylinderGeometry(TOP_R,BASE_R,FL_H*FLOORS,8,FLOORS,true);
-  var wall=new THREE.Mesh(wallG,mWall);
-  wall.position.y=FL_H*FLOORS/2;wall.castShadow=true;wall.receiveShadow=true;g.add(wall);
+function buildLighthouse() {
+  var g = new THREE.Group();
+  // Outer wall — 8-sided angular
+  var wallG = new THREE.CylinderGeometry(TOP_R, BASE_R, FL_H * FLOORS, 8, FLOORS, true);
+  var wall = new THREE.Mesh(wallG, mWall);
+  wall.position.y = FL_H * FLOORS / 2; wall.castShadow = true; wall.receiveShadow = true; g.add(wall);
 
-  // Inner wall (backside)
-  var inG=new THREE.CylinderGeometry(TOP_R-.45,BASE_R-.45,FL_H*FLOORS,8,FLOORS,true);
-  var inW=new THREE.Mesh(inG,new THREE.MeshLambertMaterial({map:noiseTex(32,32,0x444440,18),side:THREE.BackSide}));
-  inW.position.y=FL_H*FLOORS/2;g.add(inW);
+  // Inner wall
+  var inG = new THREE.CylinderGeometry(TOP_R - 0.45, BASE_R - 0.45, FL_H * FLOORS, 8, FLOORS, true);
+  var inW = new THREE.Mesh(inG, new THREE.MeshLambertMaterial({ map: noiseTex(32, 32, 0x444440, 18), side: THREE.BackSide }));
+  inW.position.y = FL_H * FLOORS / 2; g.add(inW);
 
   // Floors + ceilings
-  for(var f=0;f<=FLOORS;f++){
-    var y=f*FL_H,r=THREE.MathUtils.lerp(BASE_R,TOP_R,f/FLOORS)-.45;
-    var fl=new THREE.Mesh(new THREE.CircleGeometry(r,8),mWood);
-    fl.rotation.x=-Math.PI/2;fl.position.y=y+.02;fl.receiveShadow=true;g.add(fl);
-    if(f>0){var cl=new THREE.Mesh(new THREE.CircleGeometry(r,8),mWoodDk);cl.rotation.x=Math.PI/2;cl.position.y=y-.02;g.add(cl);}
-
-    // Stair hole — cut is visual only (opening in floor)
-    if(f>0&&f<FLOORS){
-      var hole=new THREE.Mesh(new THREE.CircleGeometry(.6,6),new THREE.MeshBasicMaterial({color:0x111111}));
-      hole.rotation.x=-Math.PI/2;hole.position.set(Math.cos(f*1.5)*(r*.4),y+.03,Math.sin(f*1.5)*(r*.4));
-      g.add(hole);
+  for (var f = 0; f <= FLOORS; f++) {
+    var y = f * FL_H;
+    var r = THREE.MathUtils.lerp(BASE_R, TOP_R, f / FLOORS) - 0.45;
+    var fl = new THREE.Mesh(new THREE.CircleGeometry(r, 8), mWood);
+    fl.rotation.x = -Math.PI / 2; fl.position.y = y + 0.02; fl.receiveShadow = true; g.add(fl);
+    if (f > 0) {
+      var cl = new THREE.Mesh(new THREE.CircleGeometry(r, 8), mWoodDk);
+      cl.rotation.x = Math.PI / 2; cl.position.y = y - 0.02; g.add(cl);
     }
   }
 
-  // Spiral stairs — angular steps
-  var stepsTotal=FLOORS*10;
-  for(var s=0;s<stepsTotal;s++){
-    var a=(s/stepsTotal)*Math.PI*2*FLOORS+Math.PI;
-    var sy=(s/stepsTotal)*FL_H*FLOORS;
-    var ff=sy/(FL_H*FLOORS);
-    var rr=THREE.MathUtils.lerp(BASE_R,TOP_R,ff)-.5;
-    var step=new THREE.Mesh(new THREE.BoxGeometry(1.1,.08,.3),mWood);
-    step.position.set(Math.cos(a)*(rr*.55),sy+.04,Math.sin(a)*(rr*.55));
-    step.rotation.y=-a+Math.PI/2;step.castShadow=true;g.add(step);
+  // Spiral stairs
+  var stepsTotal = FLOORS * 10;
+  for (var s = 0; s < stepsTotal; s++) {
+    var a = (s / stepsTotal) * Math.PI * 2 * FLOORS + Math.PI;
+    var sy = (s / stepsTotal) * FL_H * FLOORS;
+    var ff = sy / (FL_H * FLOORS);
+    var rr = THREE.MathUtils.lerp(BASE_R, TOP_R, ff) - 0.5;
+    var step = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 0.3), mWood);
+    step.position.set(Math.cos(a) * (rr * 0.55), sy + 0.04, Math.sin(a) * (rr * 0.55));
+    step.rotation.y = -a + Math.PI / 2; step.castShadow = true; g.add(step);
   }
-  // Central pole
-  var pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,FL_H*FLOORS,6),mMetal);
-  pole.position.y=FL_H*FLOORS/2;g.add(pole);
+  var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, FL_H * FLOORS, 6), mMetal);
+  pole.position.y = FL_H * FLOORS / 2; g.add(pole);
 
-  // Lamp room — glass (8-sided angular)
-  var lrY=FL_H*FLOORS;
-  var lr=new THREE.Mesh(new THREE.CylinderGeometry(TOP_R+.2,TOP_R,2.8,8,1,true),mGlass);
-  lr.position.y=lrY+1.4;g.add(lr);
+  // Lamp room
+  var lrY = FL_H * FLOORS;
+  var lr = new THREE.Mesh(new THREE.CylinderGeometry(TOP_R + 0.2, TOP_R, 2.8, 8, 1, true), mGlass);
+  lr.position.y = lrY + 1.4; g.add(lr);
+  var lf = new THREE.Mesh(new THREE.CircleGeometry(TOP_R, 8), mMetal);
+  lf.rotation.x = -Math.PI / 2; lf.position.y = lrY + 0.02; g.add(lf);
 
-  // Lamp room floor
-  var lf=new THREE.Mesh(new THREE.CircleGeometry(TOP_R,8),mMetal);
-  lf.rotation.x=-Math.PI/2;lf.position.y=lrY+.02;g.add(lf);
+  // Roof
+  var roof = new THREE.Mesh(new THREE.ConeGeometry(TOP_R + 0.2, 1.5, 8), mMetal);
+  roof.position.y = lrY + 3.5; roof.castShadow = true; g.add(roof);
 
-  // Roof dome
-  var roof=new THREE.Mesh(new THREE.ConeGeometry(TOP_R+.2,1.5,8),mMetal);
-  roof.position.y=lrY+3.5;roof.castShadow=true;g.add(roof);
+  // Lamp bulb
+  var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 6), mEmit);
+  bulb.position.y = lrY + 1.5; bulb.visible = false; bulb.name = 'lamp'; g.add(bulb);
 
-  // Lamp bulb (hidden until activated)
-  var bulb=new THREE.Mesh(new THREE.SphereGeometry(.35,6,6),mEmit);
-  bulb.position.y=lrY+1.5;bulb.visible=false;bulb.name='lamp';g.add(bulb);
-
-  // Balcony ring
-  var bal=new THREE.Mesh(new THREE.TorusGeometry(TOP_R+.5,.04,4,8),mMetal);
-  bal.position.y=lrY;bal.rotation.x=Math.PI/2;g.add(bal);
-  for(var i=0;i<8;i++){var aa=i/8*Math.PI*2;
-    var p2=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.9,4),mMetal);
-    p2.position.set(Math.cos(aa)*(TOP_R+.5),lrY+.45,Math.sin(aa)*(TOP_R+.5));g.add(p2);}
+  // Balcony
+  var bal = new THREE.Mesh(new THREE.TorusGeometry(TOP_R + 0.5, 0.04, 4, 8), mMetal);
+  bal.position.y = lrY; bal.rotation.x = Math.PI / 2; g.add(bal);
+  for (var i = 0; i < 8; i++) {
+    var aa = i / 8 * Math.PI * 2;
+    var p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.9, 4), mMetal);
+    p2.position.set(Math.cos(aa) * (TOP_R + 0.5), lrY + 0.45, Math.sin(aa) * (TOP_R + 0.5)); g.add(p2);
+  }
 
   // Door
-  var door=new THREE.Mesh(new THREE.BoxGeometry(1.1,2.1,.12),new THREE.MeshLambertMaterial({map:noiseTex(8,16,0x3a2a1a,22)}));
-  door.position.set(0,1.05,BASE_R-.04);door.castShadow=true;door.name='door';g.add(door);
-  var frame=new THREE.Mesh(new THREE.BoxGeometry(1.3,2.3,.18),mStone);
-  frame.position.set(0,1.15,BASE_R-.08);g.add(frame);
+  var door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.1, 0.12),
+    new THREE.MeshLambertMaterial({ map: noiseTex(8, 16, 0x3a2a1a, 22) }));
+  door.position.set(0, 1.05, BASE_R - 0.04); door.castShadow = true; door.name = 'door'; g.add(door);
+  var frame = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.18), mStone);
+  frame.position.set(0, 1.15, BASE_R - 0.08); g.add(frame);
 
-  return g;
+  scene.add(g);
+  return 'lighthouse';
 }
 
-// ════════════════════════════════════════════
-//  BUILD: INTERIOR OBJECTS
-// ════════════════════════════════════════════
-var intLights=[];
-function buildInteriors(){
-  var g=new THREE.Group();
+function buildInteriors() {
+  var g = new THREE.Group();
+
   // Floor 0 — office
-  (function(){
-    var r=BASE_R-.5;
-    var desk=new THREE.Mesh(new THREE.BoxGeometry(1.4,.7,.6),mWood);
-    desk.position.set(-r*.4,.35,-r*.3);desk.castShadow=true;g.add(desk);
+  var r0 = BASE_R - 0.5;
+  var desk = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.6), mWood);
+  desk.position.set(-r0 * 0.4, 0.35, -r0 * 0.3); desk.castShadow = true; g.add(desk);
 
-    // Oil lamp on desk
-    var ol=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,.22,6),mMetal);
-    ol.position.set(-r*.4,.85,-r*.3);g.add(ol);
-    interactables.push({mesh:ol,prompt:'[E] Зажечь лампу',act:'lamp',used:false});
+  var ol = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.22, 6), mMetal);
+  ol.position.set(-r0 * 0.4, 0.85, -r0 * 0.3); g.add(ol);
+  interactables.push({ mesh: ol, prompt: '[E] Зажечь лампу', act: 'lamp', used: false });
 
-    // Chair
-    var ch=new THREE.Mesh(new THREE.BoxGeometry(.45,.04,.45),mWood);
-    ch.position.set(-r*.4,.42,.1);g.add(ch);
-    var chB=new THREE.Mesh(new THREE.BoxGeometry(.45,.5,.04),mWood);
-    chB.position.set(-r*.4,.65,.32);g.add(chB);
+  var ch = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.04, 0.45), mWood);
+  ch.position.set(-r0 * 0.4, 0.42, 0.1); g.add(ch);
+  var chB = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.5, 0.04), mWood);
+  chB.position.set(-r0 * 0.4, 0.65, 0.32); g.add(chB);
 
-    // Radio
-    var rd=new THREE.Mesh(new THREE.BoxGeometry(.28,.18,.14),new THREE.MeshLambertMaterial({color:0x222222}));
-    rd.position.set(-r*.15,.82,-r*.3);rd.name='radio';g.add(rd);
-    interactables.push({mesh:rd,prompt:'[E] Проверить рацию',act:'radio',used:false});
+  var rd = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.18, 0.14), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  rd.position.set(-r0 * 0.15, 0.82, -r0 * 0.3); g.add(rd);
+  interactables.push({ mesh: rd, prompt: '[E] Проверить рацию', act: 'radio', used: false });
 
-    // Shelves with bottles
-    for(var i=0;i<3;i++){
-      var sh=new THREE.Mesh(new THREE.BoxGeometry(1,.04,.25),mWoodDk);
-      sh.position.set(r*.35,.9+i*.6,-r*.5);g.add(sh);
-      // Bottles on shelves
-      for(var j=0;j<3;j++){
-        var bt=new THREE.Mesh(new THREE.CylinderGeometry(.03,.04,.15,5),
-          new THREE.MeshLambertMaterial({color:Math.random()>.5?0x225533:0x443322}));
-        bt.position.set(r*.35-.3+j*.25,.97+i*.6,-r*.5);g.add(bt);
-      }
+  for (var i = 0; i < 3; i++) {
+    var sh = new THREE.Mesh(new THREE.BoxGeometry(1, 0.04, 0.25), mWoodDk);
+    sh.position.set(r0 * 0.35, 0.9 + i * 0.6, -r0 * 0.5); g.add(sh);
+    for (var j = 0; j < 3; j++) {
+      var bt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.15, 5),
+        new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0x225533 : 0x443322 }));
+      bt.position.set(r0 * 0.35 - 0.3 + j * 0.25, 0.97 + i * 0.6, -r0 * 0.5); g.add(bt);
     }
-
-    // Window (simple bright patch on wall)
-    var win=new THREE.Mesh(new THREE.PlaneGeometry(.6,.8),new THREE.MeshBasicMaterial({color:0x334455,transparent:true,opacity:.3}));
-    win.position.set(r*.7,1.8,-r*.6);win.rotation.y=-.3;g.add(win);
-  })();
+  }
 
   // Floor 1 — bedroom
-  (function(){
-    var r=THREE.MathUtils.lerp(BASE_R,TOP_R,.25)-.5;
-    var y=FL_H;
-    var bed=new THREE.Mesh(new THREE.BoxGeometry(1.6,.35,.9),new THREE.MeshLambertMaterial({map:noiseTex(16,8,0x445566,15)}));
-    bed.position.set(r*.2,y+.18,-r*.3);bed.castShadow=true;g.add(bed);
+  var r1 = THREE.MathUtils.lerp(BASE_R, TOP_R, 0.25) - 0.5;
+  var y1 = FL_H;
+  var bed = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.9),
+    new THREE.MeshLambertMaterial({ map: noiseTex(16, 8, 0x445566, 15) }));
+  bed.position.set(r1 * 0.2, y1 + 0.18, -r1 * 0.3); bed.castShadow = true; g.add(bed);
+  var pillow = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.25), new THREE.MeshLambertMaterial({ color: 0x667788 }));
+  pillow.position.set(r1 * 0.2, y1 + 0.42, -r1 * 0.3 - 0.28); g.add(pillow);
 
-    var pillow=new THREE.Mesh(new THREE.BoxGeometry(.35,.1,.25),new THREE.MeshLambertMaterial({color:0x667788}));
-    pillow.position.set(r*.2,y+.42,-r*.3-.28);g.add(pillow);
+  var ns = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.45, 0.3), mWoodDk);
+  ns.position.set(r1 * 0.2 + 1, y1 + 0.22, -r1 * 0.3); g.add(ns);
 
-    // Nightstand
-    var ns=new THREE.Mesh(new THREE.BoxGeometry(.35,.45,.3),mWoodDk);
-    ns.position.set(r*.2+1,y+.22,-r*.3);g.add(ns);
-
-    // Photo
-    var ph=new THREE.Mesh(new THREE.BoxGeometry(.12,.16,.015),new THREE.MeshLambertMaterial({color:0xddccaa}));
-    ph.position.set(r*.2+1,y+.53,-r*.3);ph.rotation.x=-.12;ph.name='photo';g.add(ph);
-    interactables.push({mesh:ph,prompt:'[E] Посмотреть фотографию',act:'photo',used:false});
-  })();
+  var ph = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.015), new THREE.MeshLambertMaterial({ color: 0xddccaa }));
+  ph.position.set(r1 * 0.2 + 1, y1 + 0.53, -r1 * 0.3); ph.rotation.x = -0.12; g.add(ph);
+  interactables.push({ mesh: ph, prompt: '[E] Посмотреть фотографию', act: 'photo', used: false });
 
   // Floor 2 — storage
-  (function(){
-    var r=THREE.MathUtils.lerp(BASE_R,TOP_R,.5)-.5;
-    var y=FL_H*2;
-    for(var i=0;i<5;i++){
-      var a=Math.PI*.4*i+.5;
-      var cr=new THREE.Mesh(new THREE.BoxGeometry(.5+Math.random()*.3,.4+Math.random()*.2,.45),mWood);
-      cr.position.set(Math.cos(a)*(r*.45),y+.22,Math.sin(a)*(r*.45));
-      cr.rotation.y=Math.random()*.5;cr.castShadow=true;g.add(cr);
-    }
-    var barrel=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.6,6),mRust);
-    barrel.position.set(-r*.3,y+.3,r*.2);barrel.castShadow=true;g.add(barrel);
-  })();
-
-  // Floor 3 (top) — lamp mechanism
-  (function(){
-    var y=FL_H*3;
-    var base=new THREE.Mesh(new THREE.CylinderGeometry(.4,.5,.7,6),mRust);
-    base.position.set(0,y+.35,0);g.add(base);
-    var lever=new THREE.Mesh(new THREE.BoxGeometry(.06,.55,.06),mMetal);
-    lever.position.set(.25,y+.7,0);lever.name='lever';g.add(lever);
-    interactables.push({mesh:lever,prompt:'[E] Запустить маяк',act:'lighthouse',used:false});
-  })();
-
-  return g;
-}
-
-// ════════════════════════════════════════════
-//  BUILD: CREATURE (shadow entity)
-// ════════════════════════════════════════════
-var creature,creatureGeo,creatureVisible=false,creatureAlpha=0;
-function buildCreature(){
-  // Tall, thin, angular black silhouette
-  var g=new THREE.Group();
-
-  // Body — stretched box
-  var bodyG=new THREE.BoxGeometry(.3,3,.15,1,4,1);
-  var bodyM=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0});
-  var body=new THREE.Mesh(bodyG,bodyM);
-  body.position.y=1.5;
-  g.add(body);
-
-  // Head — angular
-  var headG=new THREE.TetrahedronGeometry(.2,0);
-  var head=new THREE.Mesh(headG,bodyM.clone());
-  head.position.y=3.1;head.rotation.z=Math.PI/4;
-  g.add(head);
-
-  // Arms — thin stretched
-  for(var side=-1;side<=1;side+=2){
-    var armG=new THREE.BoxGeometry(.06,1.8,.04,1,3,1);
-    var arm=new THREE.Mesh(armG,bodyM.clone());
-    arm.position.set(side*.25,1.8,0);arm.rotation.z=side*.15;
-    g.add(arm);
+  var r2 = THREE.MathUtils.lerp(BASE_R, TOP_R, 0.5) - 0.5;
+  var y2 = FL_H * 2;
+  for (var i = 0; i < 5; i++) {
+    var a = Math.PI * 0.4 * i + 0.5;
+    var cr = new THREE.Mesh(new THREE.BoxGeometry(0.5 + Math.random() * 0.3, 0.4 + Math.random() * 0.2, 0.45), mWood);
+    cr.position.set(Math.cos(a) * (r2 * 0.45), y2 + 0.22, Math.sin(a) * (r2 * 0.45));
+    cr.rotation.y = Math.random() * 0.5; cr.castShadow = true; g.add(cr);
   }
+  var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.6, 6), mRust);
+  barrel.position.set(-r2 * 0.3, y2 + 0.3, r2 * 0.2); barrel.castShadow = true; g.add(barrel);
 
-  // Store original positions for vertex jitter
-  g.traverse(function(ch){
-    if(ch.isMesh){
-      ch.geometry.userData.origPos=ch.geometry.attributes.position.array.slice();
-    }
-  });
+  // Floor 3 — lamp mechanism
+  var y3 = FL_H * 3;
+  var mBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.7, 6), mRust);
+  mBase.position.set(0, y3 + 0.35, 0); g.add(mBase);
+  var lever = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 0.06), mMetal);
+  lever.position.set(0.25, y3 + 0.7, 0); g.add(lever);
+  interactables.push({ mesh: lever, prompt: '[E] Запустить маяк', act: 'lighthouse', used: false });
 
-  g.position.set(0,0,-20);g.visible=false;
-  creature=g;
   scene.add(g);
+  return 'interiors';
 }
 
-function updateCreature(dt){
-  if(!creature)return;
-  // Show creature when sanity < 35 and it's night
-  var shouldShow=S.sanity<35&&S.night;
-  if(shouldShow&&!creatureVisible){
-    creatureVisible=true;creature.visible=true;
-    // Position behind player or in darkness
-    var a=S.yaw+Math.PI+((Math.random()-.5)*.8);
-    var d=6+Math.random()*4;
-    creature.position.set(camera.position.x+Math.cos(a)*d,0,camera.position.z+Math.sin(a)*d);
-    creature.lookAt(camera.position.x,1.7,camera.position.z);
+function buildCreature() {
+  var g = new THREE.Group();
+  var bodyMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0 });
+
+  var body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 0.15, 1, 4, 1), bodyMat);
+  body.position.y = 1.5; g.add(body);
+
+  var head = new THREE.Mesh(new THREE.TetrahedronGeometry(0.2, 0), bodyMat.clone());
+  head.position.y = 3.1; head.rotation.z = Math.PI / 4; g.add(head);
+
+  for (var side = -1; side <= 1; side += 2) {
+    var arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 0.04, 1, 3, 1), bodyMat.clone());
+    arm.position.set(side * 0.25, 1.8, 0); arm.rotation.z = side * 0.15; g.add(arm);
   }
-  if(!shouldShow&&creatureVisible){creatureVisible=false;creatureAlpha=0;creature.visible=false;}
-  if(!creatureVisible)return;
 
-  // Fade in
-  creatureAlpha=Math.min(1,creatureAlpha+dt*.5);
-
-  // Face player
-  creature.lookAt(camera.position.x,0,camera.position.z);
-
-  // Check if player is looking at creature
-  var toC=new THREE.Vector3().subVectors(creature.position,camera.position).normalize();
-  var camDir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-  var dot=camDir.dot(toC);
-  var looking=dot>.85;
-
-  // Vertex jitter when looked at!
-  creature.traverse(function(ch){
-    if(!ch.isMesh)return;
-    var pos=ch.geometry.attributes.position;
-    var orig=ch.geometry.userData.origPos;
-    if(!orig)return;
-    var jitter=looking?0.08:0.01;
-    for(var i=0;i<pos.count;i++){
-      pos.array[i*3]=orig[i*3]+(Math.random()-.5)*jitter;
-      pos.array[i*3+1]=orig[i*3+1]+(Math.random()-.5)*jitter;
-      pos.array[i*3+2]=orig[i*3+2]+(Math.random()-.5)*jitter;
+  // Store original vertex positions for jitter
+  g.traverse(function(ch) {
+    if (ch.isMesh) {
+      ch.geometry.userData.origPos = ch.geometry.attributes.position.array.slice();
     }
-    pos.needsUpdate=true;
-    ch.material.opacity=creatureAlpha*(looking?0.85:0.6);
   });
 
-  // Drain sanity faster when looking
-  if(looking)S.sanity=Math.max(0,S.sanity-dt*8);
+  g.position.set(0, 0, -30); g.visible = false;
+  creature = g;
+  scene.add(g);
+  return 'creature';
+}
 
-  // Teleport away if player gets too close
-  var dist=camera.position.distanceTo(creature.position);
-  if(dist<3){
-    creatureVisible=false;creature.visible=false;creatureAlpha=0;
-    S.sanity=Math.max(0,S.sanity-10);
-    if(AU.ctx)auPlay(genWhisper(),'hor',false,.6);
-    // Flash
-    document.getElementById('blink').style.opacity=1;
-    setTimeout(function(){document.getElementById('blink').style.opacity=0;},120);
+function buildSea() {
+  var geo = new THREE.PlaneGeometry(300, 300, 40, 40);
+  var mat = new THREE.MeshLambertMaterial({ color: 0x081018, transparent: true, opacity: 0.8 });
+  var m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI / 2; m.position.y = -1.5; m.name = 'sea';
+  scene.add(m);
+  return 'sea';
+}
+
+function buildRain() {
+  var RAIN_N = 2000;
+  var geo = new THREE.BufferGeometry();
+  var rp = new Float32Array(RAIN_N * 3);
+  for (var i = 0; i < RAIN_N; i++) {
+    rp[i * 3] = (Math.random() - 0.5) * 50;
+    rp[i * 3 + 1] = Math.random() * 25;
+    rp[i * 3 + 2] = (Math.random() - 0.5) * 50;
   }
+  geo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+  rainMat = new THREE.PointsMaterial({ color: 0x5577aa, size: 0.06, transparent: true, opacity: 0.3 });
+  rain = new THREE.Points(geo, rainMat);
+  scene.add(rain);
+  return 'rain';
 }
 
-// ════════════════════════════════════════════
-//  BUILD: SEA
-// ════════════════════════════════════════════
-function buildSea(){
-  var geo=new THREE.PlaneGeometry(300,300,40,40);
-  var mat=new THREE.MeshLambertMaterial({color:0x081018,transparent:true,opacity:.8});
-  var m=new THREE.Mesh(geo,mat);m.rotation.x=-Math.PI/2;m.position.y=-1.5;m.name='sea';return m;
+function buildLights() {
+  ambLight = new THREE.AmbientLight(0x1a1a2e, 0.25); scene.add(ambLight);
+
+  moonLight = new THREE.DirectionalLight(0x334466, 0.35);
+  moonLight.position.set(25, 35, -15); moonLight.castShadow = true;
+  moonLight.shadow.mapSize.set(512, 512);
+  moonLight.shadow.camera.near = 1; moonLight.shadow.camera.far = 80;
+  moonLight.shadow.camera.left = -25; moonLight.shadow.camera.right = 25;
+  moonLight.shadow.camera.top = 25; moonLight.shadow.camera.bottom = -25;
+  scene.add(moonLight);
+
+  sunLight = new THREE.DirectionalLight(0xffeedd, 0.5);
+  sunLight.position.set(-18, 28, 8); sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(512, 512);
+  sunLight.shadow.camera.near = 1; sunLight.shadow.camera.far = 80;
+  sunLight.shadow.camera.left = -25; sunLight.shadow.camera.right = 25;
+  sunLight.shadow.camera.top = 25; sunLight.shadow.camera.bottom = -25;
+  scene.add(sunLight);
+
+  flashlight = new THREE.SpotLight(0xfff5e0, 0, 18, Math.PI * 0.2, 0.35, 1.5);
+  flashlight.castShadow = true; flashlight.shadow.mapSize.set(256, 256);
+  flashlight.visible = false; scene.add(flashlight); scene.add(flashlight.target);
+
+  lhBeam = new THREE.SpotLight(0xffee88, 0, 100, Math.PI * 0.06, 0.25, 1);
+  lhBeam.position.set(0, 15.5, 0); lhBeam.visible = false;
+  scene.add(lhBeam); scene.add(lhBeam.target);
+
+  return 'lights';
 }
 
-// ════════════════════════════════════════════
-//  RAIN (lightweight)
-// ════════════════════════════════════════════
-var RAIN_N=2000;
-var rainGeo=new THREE.BufferGeometry();
-var rp=new Float32Array(RAIN_N*3);
-for(var i=0;i<RAIN_N;i++){rp[i*3]=(Math.random()-.5)*50;rp[i*3+1]=Math.random()*25;rp[i*3+2]=(Math.random()-.5)*50;}
-rainGeo.setAttribute('position',new THREE.BufferAttribute(rp,3));
-var rainMat=new THREE.PointsMaterial({color:0x5577aa,size:.06,transparent:true,opacity:.3});
-var rain=new THREE.Points(rainGeo,rainMat);
+// ═══════════════════════════════════════════
+//  LOADING SYSTEM — runs FIRST, builds scene in steps
+// ═══════════════════════════════════════════
+var buildSteps = [
+  { fn: initGame, label: 'движок...' },
+  { fn: initMaterials, label: 'текстуры...' },
+  { fn: buildIsland, label: 'остров...' },
+  { fn: buildLighthouse, label: 'маяк...' },
+  { fn: buildInteriors, label: 'интерьер...' },
+  { fn: buildCreature, label: 'тени...' },
+  { fn: buildSea, label: 'море...' },
+  { fn: buildRain, label: 'дождь...' },
+  { fn: buildLights, label: 'свет...' }
+];
 
-// ════════════════════════════════════════════
-//  SCENE ASSEMBLY
-// ════════════════════════════════════════════
-scene.add(buildIsland());
-scene.add(buildLighthouse());
-scene.add(buildInteriors());
-scene.add(buildSea());
-scene.add(rain);
-buildCreature();
+function runLoading() {
+  var bar = document.getElementById('lbar');
+  var stat = document.getElementById('lstatus');
+  var errEl = document.getElementById('lerr');
+  var step = 0;
+  var total = buildSteps.length;
 
-// ════════════════════════════════════════════
-//  LIGHTS
-// ════════════════════════════════════════════
-var ambLight=new THREE.AmbientLight(0x1a1a2e,.25);scene.add(ambLight);
+  function nextStep() {
+    if (step >= total) {
+      bar.style.width = '100%';
+      stat.textContent = 'готово';
+      setTimeout(function() {
+        document.getElementById('loading').classList.add('fade');
+        document.getElementById('start').style.display = 'flex';
+        S.loaded = true;
+      }, 500);
+      return;
+    }
 
-var moonLight=new THREE.DirectionalLight(0x334466,.35);
-moonLight.position.set(25,35,-15);moonLight.castShadow=true;
-moonLight.shadow.mapSize.set(512,512);
-moonLight.shadow.camera.near=1;moonLight.shadow.camera.far=80;
-moonLight.shadow.camera.left=-25;moonLight.shadow.camera.right=25;
-moonLight.shadow.camera.top=25;moonLight.shadow.camera.bottom=-25;
-scene.add(moonLight);
+    var current = buildSteps[step];
+    stat.textContent = current.label;
+    bar.style.width = ((step / total) * 100) + '%';
 
-var sunLight=new THREE.DirectionalLight(0xffeedd,.5);
-sunLight.position.set(-18,28,8);sunLight.castShadow=true;
-sunLight.shadow.mapSize.set(512,512);
-sunLight.shadow.camera.near=1;sunLight.shadow.camera.far=80;
-sunLight.shadow.camera.left=-25;sunLight.shadow.camera.right=25;
-sunLight.shadow.camera.top=25;sunLight.shadow.camera.bottom=-25;
-scene.add(sunLight);
+    // Run build step with error handling
+    setTimeout(function() {
+      try {
+        var result = current.fn();
+        step++;
+        nextStep();
+      } catch (e) {
+        errEl.style.display = 'block';
+        errEl.textContent = 'Ошибка (' + current.label + '): ' + e.message;
+        console.error('Build error at step "' + current.label + '":', e);
+      }
+    }, 50); // Small delay so UI updates
+  }
 
-// Flashlight
-var flashlight=new THREE.SpotLight(0xfff5e0,0,18,Math.PI*.2,.35,1.5);
-flashlight.castShadow=true;flashlight.shadow.mapSize.set(256,256);
-flashlight.visible=false;scene.add(flashlight);scene.add(flashlight.target);
+  nextStep();
+}
 
-// Lighthouse beam
-var lhBeam=new THREE.SpotLight(0xffee88,0,100,Math.PI*.06,.25,1);
-lhBeam.position.set(0,15.5,0);lhBeam.visible=false;scene.add(lhBeam);scene.add(lhBeam.target);
+// Start loading immediately!
+runLoading();
 
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  CONTROLS
-// ════════════════════════════════════════════
-document.addEventListener('mousemove',function(e){
-  if(!S.locked||S.paused)return;
-  S.yaw-=e.movementX*.002;S.pitch-=e.movementY*.002;
-  S.pitch=Math.max(-1.4,Math.min(1.4,S.pitch));
-});
-document.addEventListener('keydown',function(e){
-  S.keys[e.code]=true;
-  if(e.code==='KeyF'&&S.started&&!S.paused)toggleFlash();
-  if(e.code==='KeyE'&&S.started&&!S.paused)doInteract();
-  if(e.code==='Escape'&&S.started)togglePause();
-  if(e.code==='ShiftLeft'||e.code==='ShiftRight')S.sprinting=true;
-});
-document.addEventListener('keyup',function(e){
-  S.keys[e.code]=false;
-  if(e.code==='ShiftLeft'||e.code==='ShiftRight')S.sprinting=false;
+// ═══════════════════════════════════════════
+document.addEventListener('mousemove', function(e) {
+  if (!S.locked || S.paused) return;
+  S.yaw -= e.movementX * 0.002;
+  S.pitch -= e.movementY * 0.002;
+  S.pitch = Math.max(-1.4, Math.min(1.4, S.pitch));
 });
 
-function toggleFlash(){
-  S.flashOn=!S.flashOn;flashlight.visible=S.flashOn;
-  if(S.flashOn)flashlight.intensity=3;
+document.addEventListener('keydown', function(e) {
+  S.keys[e.code] = true;
+  if (e.code === 'KeyF' && S.started && !S.paused) toggleFlash();
+  if (e.code === 'KeyE' && S.started && !S.paused) doInteract();
+  if (e.code === 'Escape' && S.started) togglePause();
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') S.sprinting = true;
+});
+
+document.addEventListener('keyup', function(e) {
+  S.keys[e.code] = false;
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') S.sprinting = false;
+});
+
+function toggleFlash() {
+  S.flashOn = !S.flashOn;
+  flashlight.visible = S.flashOn;
+  if (S.flashOn) flashlight.intensity = 3;
 }
 
-function doInteract(){
-  if(!S.nearItem)return;
-  var it=S.nearItem;
-  if(it.used&&it.act!=='radio')return;
-  if(it.act==='lighthouse'){
-    S.lighthouseOn=true;
-    var lmp=scene.getObjectByName('lamp');
-    if(lmp){lmp.visible=true;}
-    lhBeam.visible=true;lhBeam.intensity=6;
-    showSub('Маяк запущен. Свет пронзает туман...',4000);
-    S.gameTime=Math.max(S.gameTime,20.5);
-    it.used=true;
-  }else if(it.act==='lamp'){
-    var p=new THREE.Vector3();it.mesh.getWorldPosition(p);
-    var lt=new THREE.PointLight(0xffaa44,1.2,5);
-    lt.position.copy(p);lt.position.y+=.25;scene.add(lt);intLights.push(lt);
-    S.sanity=Math.min(100,S.sanity+5);
-    showSub('Тёплый свет лампы успокаивает...',3000);
-    it.used=true;
-  }else if(it.act==='radio'){
-    if(!it.used){showSub('Рация трещит... Только статические помехи.',3000);it.used=true;}
-    else if(S.night){showSub('Сквозь помехи... голос? «...папа... помоги...»',4000);S.sanity=Math.max(0,S.sanity-10);if(AU.ctx)auPlay(genWhisper(),'hor',false,.7);}
-    else showSub('Рация молчит. Нет сигнала.',2000);
-  }else if(it.act==='photo'){
-    showSub('Фотография девочки. На обороте: «Лили, 5 лет. Папа, я тебя жду.»',5000);
-    S.sanity=Math.max(0,S.sanity-3);it.used=true;
+function doInteract() {
+  if (!S.nearItem) return;
+  var it = S.nearItem;
+  if (it.used && it.act !== 'radio') return;
+
+  if (it.act === 'lighthouse') {
+    S.lighthouseOn = true;
+    var lmp = scene.getObjectByName('lamp');
+    if (lmp) lmp.visible = true;
+    lhBeam.visible = true; lhBeam.intensity = 6;
+    showSub('Маяк запущен. Свет пронзает туман...', 4000);
+    S.gameTime = Math.max(S.gameTime, 20.5);
+    it.used = true;
+  } else if (it.act === 'lamp') {
+    var p = new THREE.Vector3(); it.mesh.getWorldPosition(p);
+    var lt = new THREE.PointLight(0xffaa44, 1.2, 5);
+    lt.position.copy(p); lt.position.y += 0.25; scene.add(lt); intLights.push(lt);
+    S.sanity = Math.min(100, S.sanity + 5);
+    showSub('Тёплый свет лампы успокаивает...', 3000);
+    it.used = true;
+  } else if (it.act === 'radio') {
+    if (!it.used) {
+      showSub('Рация трещит... Только статические помехи.', 3000); it.used = true;
+    } else if (S.night) {
+      showSub('Сквозь помехи... голос? «...папа... помоги...»', 4000);
+      S.sanity = Math.max(0, S.sanity - 10);
+      if (AU.ctx) auPlay(genWhisper(), 'hor', false, 0.7);
+    } else {
+      showSub('Рация молчит. Нет сигнала.', 2000);
+    }
+  } else if (it.act === 'photo') {
+    showSub('Фотография девочки. На обороте: «Лили, 5 лет. Папа, я тебя жду.»', 5000);
+    S.sanity = Math.max(0, S.sanity - 3); it.used = true;
   }
 }
 
-function togglePause(){
-  S.paused=!S.paused;
-  var m=document.getElementById('pause');
-  if(S.paused){
-    m.style.display='flex';document.exitPointerLock();
-    var b=document.getElementById('btnE');
-    if(S.sanity<40){b.textContent='ВЫХОДА НЕТ';b.style.color='#a33';b.style.borderColor='#a33';}
-    else{b.textContent='Выход';b.style.color='';b.style.borderColor='';}
-  }else{m.style.display='none';renderer.domElement.requestPointerLock();}
+function togglePause() {
+  S.paused = !S.paused;
+  var m = document.getElementById('pause');
+  if (S.paused) {
+    m.style.display = 'flex'; document.exitPointerLock();
+    var b = document.getElementById('btnE');
+    if (S.sanity < 40) { b.textContent = 'ВЫХОДА НЕТ'; b.style.color = '#a33'; b.style.borderColor = '#a33'; }
+    else { b.textContent = 'Выход'; b.style.color = ''; b.style.borderColor = ''; }
+  } else {
+    m.style.display = 'none';
+    var gc = document.getElementById('game');
+    if (gc) gc.requestPointerLock();
+  }
 }
-document.getElementById('btnR').addEventListener('click',togglePause);
-document.getElementById('btnE').addEventListener('click',function(){
-  if(S.sanity<40){showSub('Ты не можешь уйти.',3000);togglePause();}
+
+document.getElementById('btnR').addEventListener('click', togglePause);
+document.getElementById('btnE').addEventListener('click', function() {
+  if (S.sanity < 40) { showSub('Ты не можешь уйти.', 3000); togglePause(); }
 });
 
-// ════════════════════════════════════════════
-//  UI
-// ════════════════════════════════════════════
-var subTO;
-function showSub(t,dur){
-  var el=document.getElementById('sub');el.textContent=t;el.classList.add('on');
-  clearTimeout(subTO);subTO=setTimeout(function(){el.classList.remove('on');},dur||3000);
-}
-function showChap(t,dur){
-  var el=document.getElementById('chap');el.textContent=t;el.style.opacity=1;
-  setTimeout(function(){el.style.opacity=0;},dur||4000);
-}
+// ═══════════════════════════════════════════
+//  START GAME
+// ═══════════════════════════════════════════
+document.getElementById('start').addEventListener('click', function() {
+  if (!S.loaded) return;
+  document.getElementById('start').style.display = 'none';
+  document.getElementById('hud').style.display = 'block';
+  var gc = document.getElementById('game');
+  if (gc) gc.requestPointerLock();
+  S.started = true;
 
-// ════════════════════════════════════════════
+  // Init audio
+  try {
+    audioInit();
+    auPlay(genWind(), 'amb', true, 0.5);
+    auPlay(genRain(), 'amb', true, 0.25);
+    auPlay(genWaves(), 'amb', true, 0.35);
+
+    setInterval(function() {
+      if (!S.paused && S.started) auPlay(genCreak(), 'amb', false, 0.15 + Math.random() * 0.25);
+    }, 8000);
+
+    setInterval(function() {
+      if (!S.paused && S.started && S.night) {
+        auPlay(genThunder(), 'amb', false, 0.35 + Math.random() * 0.25);
+        setTimeout(function() {
+          if (ambLight) { ambLight.intensity = 2.5; setTimeout(function() { ambLight.intensity = S.night ? 0.05 : 0.25; }, 80); }
+        }, 150 + Math.random() * 400);
+      }
+    }, 15000);
+  } catch (e) { console.warn('Audio init failed:', e); }
+
+  setTimeout(function() { showChap('Глава I — Прибытие', 5000); }, 800);
+  setTimeout(function() { showSub('Маяк нуждается в ремонте. Поднимитесь наверх и запустите его.', 6000); }, 6500);
+});
+
+document.addEventListener('pointerlockchange', function() {
+  S.locked = !!document.pointerLockElement;
+  document.body.style.cursor = S.locked ? 'none' : 'default';
+});
+
+// ═══════════════════════════════════════════
 //  UPDATE FUNCTIONS
-// ════════════════════════════════════════════
-function updatePlayer(dt){
-  if(!S.locked||S.paused)return;
-  camera.quaternion.setFromEuler(new THREE.Euler(S.pitch,S.yaw,0,'YXZ'));
+// ═══════════════════════════════════════════
+function updatePlayer(dt) {
+  if (!S.locked || S.paused) return;
+  camera.quaternion.setFromEuler(new THREE.Euler(S.pitch, S.yaw, 0, 'YXZ'));
 
-  var spd=S.sprinting?S.sprint:S.speed;
-  var fwd=new THREE.Vector3(0,0,-1).applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,S.yaw,0)));
-  var rt=new THREE.Vector3(1,0,0).applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,S.yaw,0)));
-  var mv=new THREE.Vector3();
-  if(S.keys.KeyW)mv.add(fwd);if(S.keys.KeyS)mv.sub(fwd);
-  if(S.keys.KeyD)mv.add(rt);if(S.keys.KeyA)mv.sub(rt);
+  var spd = S.sprinting ? S.sprint : S.speed;
+  var yawQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, S.yaw, 0));
+  var fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(yawQ);
+  var rt = new THREE.Vector3(1, 0, 0).applyQuaternion(yawQ);
+  var mv = new THREE.Vector3();
+  if (S.keys.KeyW) mv.add(fwd);
+  if (S.keys.KeyS) mv.sub(fwd);
+  if (S.keys.KeyD) mv.add(rt);
+  if (S.keys.KeyA) mv.sub(rt);
 
-  if(mv.length()>.01){
-    mv.normalize().multiplyScalar(spd*dt);
-    var np=camera.position.clone().add(mv);
-    var dist=Math.sqrt(np.x*np.x+np.z*np.z);
-    // Island boundary
-    if(dist<14.5){
-      // Lighthouse wall collision
-      var hf=Math.max(0,Math.min(1,(camera.position.y-1.7)/(FL_H*FLOORS)));
-      var wr=THREE.MathUtils.lerp(BASE_R,TOP_R,hf);
-      if(dist>wr+.3||dist<wr-.5){
+  if (mv.lengthSq() > 0.001) {
+    mv.normalize().multiplyScalar(spd * dt);
+    var np = camera.position.clone().add(mv);
+    var dist = Math.sqrt(np.x * np.x + np.z * np.z);
+    if (dist < 14.5) {
+      var hf = Math.max(0, Math.min(1, (camera.position.y - 1.7) / (FL_H * FLOORS)));
+      var wr = THREE.MathUtils.lerp(BASE_R, TOP_R, hf);
+      if (dist > wr + 0.3 || dist < wr - 0.5) {
         camera.position.add(mv);
       }
     }
-    S.bobPh+=dt*(S.sprinting?11:7.5);
+    S.bobPh += dt * (S.sprinting ? 11 : 7.5);
   }
 
-  // Head bob + breathing
-  var bobAmt=mv.length()>0.01?0.025:0;
-  var bob=Math.sin(S.bobPh)*bobAmt;
-  S.breath+=((S.sprinting?0.012:0.004)+(1-S.sanity/100)*0.008-S.breath)*dt*2;
-  camera.position.y=1.7;
-  camera.rotation.z=bob*.25+Math.sin(performance.now()*.003)*S.breath*.3;
+  var bobAmt = mv.lengthSq() > 0.001 ? 0.025 : 0;
+  var bob = Math.sin(S.bobPh) * bobAmt;
+  var breathTarget = (S.sprinting ? 0.012 : 0.004) + (1 - S.sanity / 100) * 0.008;
+  S.breath += (breathTarget - S.breath) * dt * 2;
+  camera.position.y = 1.7;
+  camera.rotation.z = bob * 0.25 + Math.sin(performance.now() * 0.003) * S.breath * 0.3;
 
   // Flashlight
-  if(S.flashOn){
-    flashlight.position.copy(camera.position);flashlight.position.y-=.15;
-    var dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+  if (S.flashOn) {
+    flashlight.position.copy(camera.position); flashlight.position.y -= 0.15;
+    var dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     flashlight.target.position.copy(camera.position).add(dir.multiplyScalar(10));
     flashlight.target.updateMatrixWorld();
-    S.battery-=dt*1.2;
-    if(S.battery<=0){S.flashOn=false;flashlight.visible=false;S.battery=0;showSub('Батарейки сели...',2000);}
-    if(S.battery<20)flashlight.intensity=2+Math.random()*(Math.random()<.08?-1.5:.4);
+    S.battery -= dt * 1.2;
+    if (S.battery <= 0) { S.flashOn = false; flashlight.visible = false; S.battery = 0; showSub('Батарейки сели...', 2000); }
+    if (S.battery < 20) {
+      var flicker = Math.random() < 0.08 ? -1.5 : 0.4;
+      flashlight.intensity = 2 + Math.random() * flicker;
+    }
   }
 
-  // Check interactables
-  var camDir2=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-  S.nearItem=null;
-  var pr=document.getElementById('prompt');
-  for(var i=0;i<interactables.length;i++){
-    var it=interactables[i];
-    var ip=new THREE.Vector3();it.mesh.getWorldPosition(ip);
-    var d=camera.position.distanceTo(ip);
-    if(d<2.8){
-      var toIt=ip.clone().sub(camera.position).normalize();
-      if(camDir2.dot(toIt)>.65){
-        S.nearItem=it;
-        pr.textContent=(it.used&&it.act!=='radio')?'':it.prompt;
-        pr.classList.add('on');break;
+  // Interactables
+  var camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  S.nearItem = null;
+  var pr = document.getElementById('prompt');
+  for (var i = 0; i < interactables.length; i++) {
+    var it = interactables[i];
+    var ip = new THREE.Vector3(); it.mesh.getWorldPosition(ip);
+    var d = camera.position.distanceTo(ip);
+    if (d < 2.8) {
+      var toIt = ip.clone().sub(camera.position).normalize();
+      if (camDir.dot(toIt) > 0.65) {
+        S.nearItem = it;
+        var txt = (it.used && it.act !== 'radio') ? '' : it.prompt;
+        pr.textContent = txt;
+        pr.classList.add('on');
+        break;
       }
     }
   }
-  if(!S.nearItem)pr.classList.remove('on');
+  if (!S.nearItem) pr.classList.remove('on');
 }
 
-function updateTime(dt){
-  S.gameTime+=S.timeSpeed*dt;if(S.gameTime>24)S.gameTime-=24;
-  var h=S.gameTime;S.night=h>=20||h<6;
+function updateTime(dt) {
+  S.gameTime += S.timeSpeed * dt;
+  if (S.gameTime > 24) S.gameTime -= 24;
+  var h = S.gameTime;
+  S.night = h >= 20 || h < 6;
 
-  var sunI,moonI,ambI,fogD;
-  if(h>=6&&h<18){
-    var dp=(h-6)/12,sh=Math.sin(dp*Math.PI);
-    sunI=sh*.6;moonI=0;ambI=.18+sh*.25;fogD=.04+(1-sh)*.03;
-    scene.background.setHex(sh>.5?0x556677:0x334455);
+  var sunI, moonI, ambI, fogD;
+  if (h >= 6 && h < 18) {
+    var dp = (h - 6) / 12, sh = Math.sin(dp * Math.PI);
+    sunI = sh * 0.6; moonI = 0; ambI = 0.18 + sh * 0.25; fogD = 0.04 + (1 - sh) * 0.03;
+    var skyHex = sh > 0.5 ? 0x556677 : 0x334455;
+    scene.background.setHex(skyHex); scene.fog.color.setHex(skyHex);
+  } else if (h >= 18 && h < 20) {
+    var t = (h - 18) / 2;
+    sunI = (1 - t) * 0.4; moonI = t * 0.25; ambI = 0.25 - t * 0.18; fogD = 0.05 + t * 0.03;
+    scene.background.set(new THREE.Color(0x884422).lerp(new THREE.Color(0x0a0a12), t));
     scene.fog.color.copy(scene.background);
-  }else if(h>=18&&h<20){
-    var t=(h-18)/2;
-    sunI=(1-t)*.4;moonI=t*.25;ambI=.25-t*.18;fogD=.05+t*.03;
-    scene.background.set(new THREE.Color(0x884422).lerp(new THREE.Color(0x0a0a12),t));
-    scene.fog.color.copy(scene.background);
-  }else{
-    sunI=0;moonI=.2;ambI=.05;fogD=.08;
-    scene.background.setHex(0x050508);scene.fog.color.setHex(0x050508);
+  } else {
+    sunI = 0; moonI = 0.2; ambI = 0.05; fogD = 0.08;
+    scene.background.setHex(0x050508); scene.fog.color.setHex(0x050508);
   }
-  sunLight.intensity=sunI;moonLight.intensity=moonI;ambLight.intensity=ambI;scene.fog.density=fogD;
+  sunLight.intensity = sunI; moonLight.intensity = moonI; ambLight.intensity = ambI; scene.fog.density = fogD;
 
-  // Lighthouse beam rotation
-  if(S.lighthouseOn){
-    var ba=performance.now()*.0004;
-    lhBeam.target.position.set(Math.cos(ba)*40,8,Math.sin(ba)*40);
+  if (S.lighthouseOn) {
+    var ba = performance.now() * 0.0004;
+    lhBeam.target.position.set(Math.cos(ba) * 40, 8, Math.sin(ba) * 40);
     lhBeam.target.updateMatrixWorld();
   }
 }
 
-function updateSanity(dt){
-  var dark=!S.flashOn&&S.night;
-  var nearL=false;
-  for(var i=0;i<intLights.length;i++){if(camera.position.distanceTo(intLights[i].position)<4.5){nearL=true;break;}}
-  if(dark&&!nearL)S.sanity-=dt*1.8;
-  else if(nearL)S.sanity+=dt*.8;
-  S.sanity=Math.max(0,Math.min(100,S.sanity));
+function updateSanity(dt) {
+  var dark = !S.flashOn && S.night;
+  var nearL = false;
+  for (var i = 0; i < intLights.length; i++) {
+    if (camera.position.distanceTo(intLights[i].position) < 4.5) { nearL = true; break; }
+  }
+  if (dark && !nearL) S.sanity -= dt * 1.8;
+  else if (nearL) S.sanity += dt * 0.8;
+  S.sanity = Math.max(0, Math.min(100, S.sanity));
 
-  // UI
-  var sb=document.getElementById('sbar'),sf=document.getElementById('sfill'),sl=document.getElementById('slbl');
-  if(S.sanity<80){sb.classList.add('on');sl.classList.add('on');}else{sb.classList.remove('on');sl.classList.remove('on');}
-  sf.style.width=S.sanity+'%';
+  var sb = document.getElementById('sbar'), sf = document.getElementById('sfill'), sl = document.getElementById('slbl');
+  if (S.sanity < 80) { sb.classList.add('on'); sl.classList.add('on'); }
+  else { sb.classList.remove('on'); sl.classList.remove('on'); }
+  sf.style.width = S.sanity + '%';
 
-  // Low sanity whispers + blinks
-  if(S.sanity<30){
-    S.whisperT-=dt;
-    if(S.whisperT<=0){
-      S.whisperT=6+Math.random()*12;
-      document.getElementById('blink').style.opacity=1;
-      setTimeout(function(){document.getElementById('blink').style.opacity=0;},70+Math.random()*100);
-      if(AU.ctx)auPlay(genWhisper(),'hor',false,.25+Math.random()*.25);
+  // Whispers + blinks at low sanity
+  if (S.sanity < 30) {
+    S.whisperT -= dt;
+    if (S.whisperT <= 0) {
+      S.whisperT = 6 + Math.random() * 12;
+      var bl = document.getElementById('blink');
+      bl.style.opacity = 1;
+      setTimeout(function() { bl.style.opacity = 0; }, 70 + Math.random() * 100);
+      if (AU.ctx) auPlay(genWhisper(), 'hor', false, 0.25 + Math.random() * 0.25);
     }
   }
+
   // Heartbeat
-  if(S.sanity<25){
-    S.scareT-=dt;
-    if(S.scareT<=0){
-      S.scareT=1.1-(1-S.sanity/25)*.35;
-      if(AU.ctx)auPlay(genHeart(),'hor',false,.35+(1-S.sanity/25)*.35);
+  if (S.sanity < 25) {
+    S.scareT -= dt;
+    if (S.scareT <= 0) {
+      S.scareT = 1.1 - (1 - S.sanity / 25) * 0.35;
+      if (AU.ctx) auPlay(genHeart(), 'hor', false, 0.35 + (1 - S.sanity / 25) * 0.35);
     }
   }
 
-  // FOV distortion at low sanity
-  camera.fov=68+(1-S.sanity/100)*8;camera.updateProjectionMatrix();
-}
-
-function updateNightEvents(dt){
-  if(!S.night)return;
-  if(!S.doorEvent&&S.gameTime>21&&S.gameTime<22){
-    S.doorEvent=true;
-    showSub('Кто-то... скребётся в дверь?',4000);
-    if(AU.ctx)auPlay(genScratch(),'hor',false,.65);
-    S.sanity=Math.max(0,S.sanity-15);
-    setTimeout(function(){showSub('Скрежет прекратился. Тишина давит.',4000);},5000);
-  }
-  if(!S.firstScare&&S.gameTime>23){
-    S.firstScare=true;
-    setTimeout(function(){
-      ambLight.intensity=3.5;
-      setTimeout(function(){ambLight.intensity=.05;showSub('Что это было?!',3000);S.sanity=Math.max(0,S.sanity-20);
-        if(AU.ctx)auPlay(genThunder(),'hor',false,.75);},120);
-    },1500);
-  }
-}
-
-function updateSea(dt){
-  var m=scene.getObjectByName('sea');if(!m)return;
-  var pos=m.geometry.attributes.position;var t=performance.now()*.001;
-  for(var i=0;i<pos.count;i++){
-    var x=pos.getX(i),z=pos.getZ(i);
-    pos.setY(i,Math.sin(x*.04+t*.7)*Math.cos(z*.04+t*.5)*.4+Math.sin(x*.08+t*1.1)*.15);
-  }
-  pos.needsUpdate=true;m.geometry.computeVertexNormals();
-}
-
-function updateRain(dt){
-  var pos=rain.geometry.attributes.position;
-  for(var i=0;i<RAIN_N;i++){
-    pos.array[i*3+1]-=13*dt;
-    if(pos.array[i*3+1]<-2){
-      pos.array[i*3+1]=20+Math.random()*5;
-      pos.array[i*3]=camera.position.x+(Math.random()-.5)*50;
-      pos.array[i*3+2]=camera.position.z+(Math.random()-.5)*50;
-    }
-  }
-  pos.needsUpdate=true;rainMat.opacity=S.night?0.25:0.12;
-}
-
-// ════════════════════════════════════════════
-//  LOADING & START
-// ════════════════════════════════════════════
-(function load(){
-  var bar=document.getElementById('lbar'),stat=document.getElementById('lstatus');
-  var msgs=['текстуры...','звуки...','маяк...','остров...','туман...','готово'];
-  var p=0,mi=0;
-  var iv=setInterval(function(){
-    p+=8+Math.random()*12;
-    if(mi<msgs.length-1&&p>mi/(msgs.length-1)*100+15){stat.textContent=msgs[++mi];}
-    if(p>=100){
-      p=100;clearInterval(iv);stat.textContent=msgs[msgs.length-1];
-      setTimeout(function(){
-        document.getElementById('loading').classList.add('fade');
-        document.getElementById('start').style.display='flex';
-        S.loaded=true;
-      },400);
-    }
-    bar.style.width=p+'%';
-  },180);
-})();
-
-document.getElementById('start').addEventListener('click',function(){
-  if(!S.loaded)return;
-  document.getElementById('start').style.display='none';
-  renderer.domElement.requestPointerLock();
-  S.started=true;
-  audioInit();
-  auPlay(genWind(),'amb',true,.5);
-  auPlay(genRain(),'amb',true,.25);
-  auPlay(genWaves(),'amb',true,.35);
-  // Random creaks
-  setInterval(function(){if(!S.paused&&S.started)auPlay(genCreak(),'amb',false,.15+Math.random()*.25);},6000+Math.random()*10000);
-  // Random thunder at night
-  setInterval(function(){if(!S.paused&&S.started&&S.night){
-    auPlay(genThunder(),'amb',false,.35+Math.random()*.25);
-    setTimeout(function(){ambLight.intensity=2.5;setTimeout(function(){ambLight.intensity=S.night?0.05:0.25;},80);},150+Math.random()*400);
-  }},12000+Math.random()*18000);
-
-  setTimeout(function(){showChap('Глава I — Прибытие',5000);},800);
-  setTimeout(function(){showSub('Маяк нуждается в ремонте. Поднимитесь наверх и запустите его.',6000);},6500);
-});
-
-document.addEventListener('pointerlockchange',function(){
-  S.locked=!!document.pointerLockElement;
-  document.body.style.cursor=S.locked?'none':'default';
-});
-
-// ════════════════════════════════════════════
-//  MAIN LOOP
-// ════════════════════════════════════════════
-function animate(){
-  requestAnimationFrame(animate);
-  var dt=Math.min(clock.getDelta(),.1);
-  if(S.started&&!S.paused){
-    updatePlayer(dt);updateTime(dt);updateSanity(dt);
-    updateNightEvents(dt);updateSea(dt);updateRain(dt);
-    updateCreature(dt);
-  }
-  renderer.render(scene,camera);
-}
-
-window.addEventListener('resize',function(){
-  camera.aspect=window.innerWidth/window.innerHeight;
+  // FOV distortion
+  camera.fov = 68 + (1 - S.sanity / 100) * 8;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth,window.innerHeight);
-});
+}
 
-animate();
+function updateCreature(dt) {
+  if (!creature) return;
+  var shouldShow = S.sanity < 35 && S.night;
+
+  if (shouldShow && !creatureVisible) {
+    creatureVisible = true; creature.visible = true;
+    var a = S.yaw + Math.PI + (Math.random() - 0.5) * 0.8;
+    var d = 6 + Math.random() * 4;
+    creature.position.set(camera.position.x + Math.cos(a) * d, 0, camera.position.z + Math.sin(a) * d);
+    creature.lookAt(camera.position.x, 1.7, camera.position.z);
+  }
+  if (!shouldShow && creatureVisible) {
+    creatureVisible = false; creatureAlpha = 0; creature.visible = false;
+  }
+  if (!creatureVisible) return;
+
+  creatureAlpha = Math.min(1, creatureAlpha + dt * 0.5);
+  creature.lookAt(camera.position.x, 0, camera.position.z);
+
+  var toC = new THREE.Vector3().subVectors(creature.position, camera.position).normalize();
+  var camDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  var dot = camDir.dot(toC);
+  var looking = dot > 0.85;
+
+  // Vertex jitter!
+  creature.traverse(function(ch) {
+    if (!ch.isMesh) return;
+    var pos = ch.geometry.attributes.position;
+    var orig = ch.geometry.userData.origPos;
+    if (!orig) return;
+    var jitter = looking ? 0.08 : 0.01;
+    for (var i = 0; i < pos.count; i++) {
+      pos.array[i * 3] = orig[i * 3] + (Math.random() - 0.5) * jitter;
+      pos.array[i * 3 + 1] = orig[i * 3 + 1] + (Math.random() - 0.5) * jitter;
+      pos.array[i * 3 + 2] = orig[i * 3 + 2] + (Math.random() - 0.5) * jitter;
+    }
+    pos.needsUpdate = true;
+    ch.material.opacity = creatureAlpha * (looking ? 0.85 : 0.6);
+  });
+
+  if (looking) S.sanity = Math.max(0, S.sanity - dt * 8);
+
+  // Teleport away if too close
+  var dist = camera.position.distanceTo(creature.position);
+  if (dist < 3) {
+    creatureVisible = false; creature.visible = false; creatureAlpha = 0;
+    S.sanity = Math.max(0, S.sanity - 10);
+    if (AU.ctx) auPlay(genWhisper(), 'hor', false, 0.6);
+    var bl = document.getElementById('blink');
+    bl.style.opacity = 1;
+    setTimeout(function() { bl.style.opacity = 0; }, 120);
+  }
+}
+
+function updateNightEvents(dt) {
+  if (!S.night) return;
+  if (!S.doorEvent && S.gameTime > 21 && S.gameTime < 22) {
+    S.doorEvent = true;
+    showSub('Кто-то... скребётся в дверь?', 4000);
+    if (AU.ctx) auPlay(genScratch(), 'hor', false, 0.65);
+    S.sanity = Math.max(0, S.sanity - 15);
+    setTimeout(function() { showSub('Скрежет прекратился. Тишина давит.', 4000); }, 5000);
+  }
+  if (!S.firstScare && S.gameTime > 23) {
+    S.firstScare = true;
+    setTimeout(function() {
+      if (ambLight) ambLight.intensity = 3.5;
+      setTimeout(function() {
+        if (ambLight) ambLight.intensity = 0.05;
+        showSub('Что это было?!', 3000);
+        S.sanity = Math.max(0, S.sanity - 20);
+        if (AU.ctx) auPlay(genThunder(), 'hor', false, 0.75);
+      }, 120);
+    }, 1500);
+  }
+}
+
+function updateSea(dt) {
+  var m = scene.getObjectByName('sea');
+  if (!m) return;
+  var pos = m.geometry.attributes.position;
+  var t = performance.now() * 0.001;
+  for (var i = 0; i < pos.count; i++) {
+    var x = pos.getX(i), z = pos.getZ(i);
+    pos.setY(i, Math.sin(x * 0.04 + t * 0.7) * Math.cos(z * 0.04 + t * 0.5) * 0.4 + Math.sin(x * 0.08 + t * 1.1) * 0.15);
+  }
+  pos.needsUpdate = true; m.geometry.computeVertexNormals();
+}
+
+function updateRain(dt) {
+  if (!rain) return;
+  var pos = rain.geometry.attributes.position;
+  var count = pos.count;
+  for (var i = 0; i < count; i++) {
+    pos.array[i * 3 + 1] -= 13 * dt;
+    if (pos.array[i * 3 + 1] < -2) {
+      pos.array[i * 3 + 1] = 20 + Math.random() * 5;
+      pos.array[i * 3] = camera.position.x + (Math.random() - 0.5) * 50;
+      pos.array[i * 3 + 2] = camera.position.z + (Math.random() - 0.5) * 50;
+    }
+  }
+  pos.needsUpdate = true;
+  rainMat.opacity = S.night ? 0.25 : 0.12;
+}
+
+// ═══════════════════════════════════════════
+//  MAIN LOOP
+// ═══════════════════════════════════════════
+function animate() {
+  requestAnimationFrame(animate);
+  if (!renderer) return;
+  var dt = Math.min(clock.getDelta(), 0.1);
+  if (S.started && !S.paused) {
+    updatePlayer(dt);
+    updateTime(dt);
+    updateSanity(dt);
+    updateCreature(dt);
+    updateNightEvents(dt);
+    updateSea(dt);
+    updateRain(dt);
+  }
+  renderer.render(scene, camera);
+}
+
+// Start render loop only after scene exists
+var waitForScene = setInterval(function() {
+  if (renderer && scene && camera) {
+    clearInterval(waitForScene);
+    animate();
+  }
+}, 100);
+
+window.addEventListener('resize', function() {
+  if (!camera || !renderer) return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
