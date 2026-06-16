@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- v3 -->
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -495,14 +496,14 @@ function updateCreature(dt){
     var pos=ch.geometry.attributes.position;
     var orig=ch.geometry.userData.origPos;
     if(!orig)return;
-    var jitter=looking?.08:.01;
+    var jitter=looking?0.08:0.01;
     for(var i=0;i<pos.count;i++){
       pos.array[i*3]=orig[i*3]+(Math.random()-.5)*jitter;
       pos.array[i*3+1]=orig[i*3+1]+(Math.random()-.5)*jitter;
       pos.array[i*3+2]=orig[i*3+2]+(Math.random()-.5)*jitter;
     }
     pos.needsUpdate=true;
-    ch.material.opacity=creatureAlpha*(looking?.85:.6);
+    ch.material.opacity=creatureAlpha*(looking?0.85:0.6);
   });
 
   // Drain sanity faster when looking
@@ -693,9 +694,9 @@ function updatePlayer(dt){
   }
 
   // Head bob + breathing
-  var bobAmt=mv.length()>.01?.025:0;
+  var bobAmt=mv.length()>0.01?0.025:0;
   var bob=Math.sin(S.bobPh)*bobAmt;
-  S.breath+=((S.sprinting?.012:.004)+(1-S.sanity/100)*.008-S.breath)*dt*2;
+  S.breath+=((S.sprinting?0.012:0.004)+(1-S.sanity/100)*0.008-S.breath)*dt*2;
   camera.position.y=1.7;
   camera.rotation.z=bob*.25+Math.sin(performance.now()*.003)*S.breath*.3;
 
@@ -834,7 +835,7 @@ function updateRain(dt){
       pos.array[i*3+2]=camera.position.z+(Math.random()-.5)*50;
     }
   }
-  pos.needsUpdate=true;rainMat.opacity=S.night?.25:.12;
+  pos.needsUpdate=true;rainMat.opacity=S.night?0.25:0.12;
 }
 
 // ════════════════════════════════════════════
@@ -873,7 +874,7 @@ document.getElementById('start').addEventListener('click',function(){
   // Random thunder at night
   setInterval(function(){if(!S.paused&&S.started&&S.night){
     auPlay(genThunder(),'amb',false,.35+Math.random()*.25);
-    setTimeout(function(){ambLight.intensity=2.5;setTimeout(function(){ambLight.intensity=S.night?.05:.25;},80);},150+Math.random()*400);
+    setTimeout(function(){ambLight.intensity=2.5;setTimeout(function(){ambLight.intensity=S.night?0.05:0.25;},80);},150+Math.random()*400);
   }},12000+Math.random()*18000);
 
   setTimeout(function(){showChap('Глава I — Прибытие',5000);},800);
